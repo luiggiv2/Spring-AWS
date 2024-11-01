@@ -1,0 +1,1 @@
+TODO: Copiar el texto de la liciencia a https://www.gnu.org/licenses/gpl-3.0.html
