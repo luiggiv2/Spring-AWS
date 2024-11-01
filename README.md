@@ -141,7 +141,7 @@ COPY /target/classes /usrapp/bin/classes
 COPY /target/dependency /usrapp/bin/dependency
 CMD ["java","-cp","./classes:./dependency/*","com.mycompany.docker1.RestServiceApplication"]
 ```
-**Tranquilos, ya les explico.**
+Tranquilos, ya les explico.
 
 * `FROM openjdk:23` Especifica la imagen base para construir la imagen Docker.
 * `WORKDIR /usrapp/bin` Establece el directorio de trabajo dentro de la imagen en /usrapp/bin.
@@ -150,10 +150,81 @@ CMD ["java","-cp","./classes:./dependency/*","com.mycompany.docker1.RestServiceA
 * `COPY /target/dependency /usrapp/bin/dependency` Copia las dependencias externas (librerías) de la aplicación desde el directorio local /target/dependency al directorio /usrapp/bin/dependency dentro de la imagen.
 * `CMD ["java","-cp","./classes:./dependency/*","com.mycompany.docker1.RestServiceApplication"]` Define el comando para ejecutar la aplicación Java cuando se inicia el contenedor.
 
+Luego procederemos a crear la imagen en docker usando la herramienta de líneas de comando.
+```
+docker build --platform linux/amd64 -t taller1 .
+```
+Revisamos que la imagen haya sido creada con `docker images`, y debería verse algo así:
+
+```
+REPOSITORY               TAG       IMAGE ID       CREATED       SIZE
+taller1                  latest    329a6fc1459e   4 hours ago   932MB
+```
+A partir de la imagen creada, hemos creado tres instancias de un contenedor docker. Ejecutando un contenedor en segundo plano `-d` con el nombre `springinstance1` expone el puerto `33025` dentro del contenedor al puerto `42000` en la máquina host.
+
+```
+docker run -d -p 42000:33025 --name springinstance1 taller1
+docker run -d -p 42001:33025 --name springinstance2 taller1
+docker run -d -p 42002:33025 --name springinstance3 taller1
+```
+
+Nos aseguramos que se encuentren ejecutando con el comando `docker ps`, y debería verse algo así:
+```
+CONTAINER ID   IMAGE     COMMAND                  CREATED       STATUS       PORTS                      NAMES
+8aa9d1c0bbe8   taller1   "java -cp ./classes:…"   2 hours ago   Up 2 hours   0.0.0.0:42002->33025/tcp   springinstance3
+47f28fa20352   taller1   "java -cp ./classes:…"   2 hours ago   Up 2 hours   0.0.0.0:42001->33025/tcp   springinstance2
+cb0fc7a67f52   taller1   "java -cp ./classes:…"   2 hours ago   Up 2 hours   0.0.0.0:42000->33025/tcp   springinstance1
+```
+
+Si verificamos en nuesro Docker Desktop, veremos algo así:
+<img width="1122" alt="Captura de pantalla 2024-11-01 a la(s) 4 59 21 p m" src="https://github.com/user-attachments/assets/c6d2c2c3-3f78-4430-a230-484d33f2802a">
+
+<img width="1121" alt="Captura de pantalla 2024-11-01 a la(s) 5 01 17 p m" src="https://github.com/user-attachments/assets/9ae2c4c3-9073-4535-a1d6-f1980d17a40e">
+
+Si accedemos al navegador con `http://localhost:42000/greeting`, `http://localhost:42001/greeting` y `http://localhost:42002/greeting`; podremos verificar que se encuentran ejecutandose. Veremos aslgo así:
+
+<img width="519" alt="Captura de pantalla 2024-11-01 a la(s) 5 05 30 p m" src="https://github.com/user-attachments/assets/1c5f0ddf-4af7-414d-9d11-be7b7fde54b5">
+
+# Ahora subiremos la imagen a Docker Hub
+
+* Previamente ya debemos contar con una cuenta creada, sino la tienes es momento de hacerlo.
+* Accederemos al menú de `Repositorios` y crearemos uno.
+* En nuestro docker local crearemos una referencia a la imagen con el nombre del repositorio que creamos anteriormente.
+  ```docker tag taller1 luiggiv2/taller1spring```
+* Verificamos que la referencia de la imagen fue creada con `docker images`.
+* Nos autenticacion con nuestra cuenta de docker hub (usuario/contraseña)
+  ```docker login```
+* Por último procederemos a empujar la imagen al repositorio de docker hub.
+  ```docker push luiggiv2/taller1spring:latest```
+
+Si todo salió correcto, podremos ver algo así:
+<img width="723" alt="Captura de pantalla 2024-11-01 a la(s) 5 20 36 p m" src="https://github.com/user-attachments/assets/4d708281-ba97-4308-974f-ca8479badee8">
+
+# Por último accederemos a nuestra cuenta AWS Academy
+
+* Instalaremos docker. Primero `sudo yum update -y` seguido de `sudo yum install docker`.
+* Iniciamos el servicio con `sudo service docker start`.
+* Configuramos nuestro usuario `sudo usermod -a -G docker ec2-user` para no tener que indicar `sudo` cada vez que se invoca un comando.
+* Cerramos la conexión y volvemos a iniciar sesión para que la configuración de usuarios surta efecto.
+* A partir de la imagen creada en Docker Hub, creamos una instancia de un contenedor.
+  ```
+  docker run -d -p 42000:33025 --name awstaller1 luiggiv2/taller1spring
+  ```
+* Realizamos la configuración de apertura de entrada del grupo de seguridad en nuestra máquina virtual para poder acceder al servicio por el puerto 42000 que hemos asignado.  
+
+<img width="1122" alt="Captura de pantalla 2024-11-01 a la(s) 5 29 28 p m" src="https://github.com/user-attachments/assets/57dd9395-5d6f-4c9a-bdca-a82ffc31cbb9">
+
+* Por último accedemos al DNS público de nuestra máquina virtual para poder ejecutar nuestra pequeña aplicación Spring que realizamos.
+  
+<img width="387" alt="Captura de pantalla 2024-11-01 a la(s) 5 32 09 p m" src="https://github.com/user-attachments/assets/eca094e4-2b6f-4b72-b7d1-6ee74bee2c1d">
+
+* Si accedemos a nuestro DNS público con el puerto que hemos confiurado en nuestro caso el `42000` y con la ruta que especificamos en nuestra aplicación `/greeting`. Deberíamos ver algo así con nuestra aplicación ejecutandose desde una máquina virtual de AWS.
+
+<img width="864" alt="Captura de pantalla 2024-11-01 a la(s) 5 34 00 p m" src="https://github.com/user-attachments/assets/6eb3bf14-73e9-4607-83f5-b6ee40772812">
 
 
 
-
+**Muchas gracias**
 
 
 
